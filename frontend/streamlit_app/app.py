@@ -3,29 +3,33 @@ import pandas as pd
 import pickle
 import scipy.sparse as sp
 import requests
+import os
 
 # ==== RELATIVE PATH FOR DEPLOYMENT ====
-BASE = "../../backend/artifacts/"
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(CURRENT_DIR, "../../backend/artifacts/")
 
-df = pd.read_pickle(BASE + "movies_df.pkl")
-
-with open(BASE + "tfidf.pkl", "rb") as f:
+# ==== Load Data ====
+df = pd.read_pickle(os.path.join(BASE, "movies_df.pkl"))
+with open(os.path.join(BASE, "tfidf.pkl"), "rb") as f:
     tfidf = pickle.load(f)
-
-tfidf_matrix = sp.load_npz(BASE + "tfidf_matrix.npz")
+tfidf_matrix = sp.load_npz(os.path.join(BASE, "tfidf_matrix.npz"))
 
 OMDB_API_KEY = "a103b426"
 
 # ==== Fetch Poster ====
 def get_poster(title):
     url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
-    data = requests.get(url).json()
-    poster = data.get("Poster")
-    if poster and poster != "N/A":
-        return poster
+    try:
+        data = requests.get(url).json()
+        poster = data.get("Poster")
+        if poster and poster != "N/A":
+            return poster
+    except:
+        pass
     return "https://via.placeholder.com/300x450?text=No+Image"
 
-# ==== Recommend Movies ====
+# ==== Recommend Movies (Local TF-IDF) ====
 def recommend(movie, n=10):
     if movie not in df['primaryTitle'].values:
         return []
@@ -45,54 +49,26 @@ def recommend(movie, n=10):
 # ==== CSS & Animations ====
 st.markdown("""
 <style>
-/* Semi-Transparent Grey Background */
 [data-testid="stAppViewContainer"], 
 [data-testid="stMainContainer"], 
 [data-testid="stSidebar"] {
     background: rgba(128,128,128,0.5) !important;
 }
 
-/* Animated Title */
+.animated-title {font-size:40px;font-weight:800;background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:titleGradient 8s ease infinite;text-align:center;margin-bottom:30px;text-shadow:0 0 6px rgba(255,69,0,0.5);}
 @keyframes titleGradient {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.animated-title {
-    font-size:40px;font-weight:800;
-    background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);
-    background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    animation:titleGradient 8s ease infinite;text-align:center;margin-bottom:30px;text-shadow:0 0 6px rgba(255,69,0,0.5);
-}
 
-/* Animated Label */
+.animated-label {font-weight:bold;background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:selectGradient 6s ease infinite;text-shadow:0 0 4px rgba(255,69,0,0.5);}
 @keyframes selectGradient {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.animated-label {
-    font-weight:bold;
-    background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);
-    background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    animation:selectGradient 6s ease infinite;text-shadow:0 0 4px rgba(255,69,0,0.5);
-}
 
-/* Animated Placeholder */
-.stSelectbox [data-baseweb="select"] > div > div > div > div > span:first-child {
-    font-weight:bold;
-    background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);
-    background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-    animation:selectGradient 6s ease infinite;text-shadow:0 0 4px rgba(255,69,0,0.5);
-}
+.stSelectbox [data-baseweb="select"] > div > div > div > div > span:first-child {font-weight:bold;background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);background-size:600% 600%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:selectGradient 6s ease infinite;text-shadow:0 0 4px rgba(255,69,0,0.5);}
 
-/* Movie Cards */
-@keyframes fireGlow {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.movie-card {
-    background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);
-    background-size:600% 600%;animation:fireGlow 8s ease infinite;
-    border-radius:12px;padding:10px;margin-bottom:20px;
-    transition:transform 0.3s,box-shadow 0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.5);
-    text-align:center;display:flex;flex-direction:column;align-items:center;height:390px;
-}
+.movie-card {background:linear-gradient(270deg,#ff416c,#ff4b2b,#f9d423,#ff416c);background-size:600% 600%;animation:fireGlow 8s ease infinite;border-radius:12px;padding:10px;margin-bottom:20px;transition:transform 0.3s,box-shadow 0.3s;box-shadow:0 2px 6px rgba(0,0,0,0.5);text-align:center;display:flex;flex-direction:column;align-items:center;height:390px;}
 .movie-card:hover {transform:scale(1.05);box-shadow:0 8px 25px rgba(255,69,0,0.8);}
 .movie-title {font-size:16px;font-weight:bold;color:#fff;margin:5px 0 2px 0;text-align:center;}
 .movie-info {font-size:13px;color:#fff;text-align:center;word-wrap:break-word;}
 .movie-poster {width:180px;height:270px;object-fit:cover;border-radius:10px;margin-bottom:8px;box-shadow:0 4px 10px rgba(0,0,0,0.4);}
 
-/* Footer */
 .footer {width:100%;background:rgba(17,17,17,0.8);padding:30px 20px;margin-top:50px;text-align:center;color:#ddd;border-top:1px solid rgba(255,255,255,0.1);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;transition:background 0.3s,box-shadow 0.3s;}
 .footer:hover {background:rgba(17,17,17,1);box-shadow:0 4px 20px rgba(255,69,0,0.3);}
 .footer-logo {font-size:24px;color:#ff4b2b;font-weight:700;letter-spacing:1.5px;margin-bottom:8px;}
@@ -119,7 +95,7 @@ st.markdown('<label class="animated-label">Select a movie:</label>', unsafe_allo
 movie_list = ["Please choose the movie..!"] + df['primaryTitle'].tolist()
 selected_movie = st.selectbox("", movie_list, index=0)
 
-# Recommendation Button with Warning
+# Recommendation Button
 if st.button("Get Recommendations"):
     if selected_movie == "Please choose the movie..!":
         st.warning("⚠️ Please choose a movie before getting recommendations!")
