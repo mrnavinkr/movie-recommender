@@ -4,13 +4,7 @@ import pickle
 import scipy.sparse as sp
 import requests
 import os
-from auth import auth_router
 import streamlit as st
-
-# Stop here if user is not logged in
-if not auth_router():
-    st.stop()
-
 
 # ==== RELATIVE PATH FOR DEPLOYMENT ====
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
